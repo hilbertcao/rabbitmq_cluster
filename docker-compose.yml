@@ -1,0 +1,82 @@
+version: '2.1'
+services:
+  mq1:
+    build: .
+    ports:
+     - "15672:15672"
+     - "6672:5672"
+    hostname: mq1
+    container_name: mq1
+    environment:
+     RABBITMQ_NODENAME: rabbit1
+     RABBITMQ_USE_LONGNAME: "true"
+     RABBITMQ_SERVER_START_ARGS: "-rabbit cluster_nodes {['rabbit1@mq1','rabbit2@mq2','rabbit3@mq3'],disc}"
+    networks: 
+     - mq_net
+    volumes:
+     - /var/log
+     - /etc/rabbitmq
+     - /var/lib/rabbitmq
+    healthcheck: 
+     test: ["CMD", "curl", "-f", "http://localhost:15672"]
+     interval: 3s
+     timeout: 1s
+     retries: 20
+  mq2:
+    build: .
+    ports:
+     - "25672:15672"
+     - "6772:5672"
+    networks:
+     - mq_net
+    hostname: mq2
+    container_name: mq2
+    environment:
+     RABBITMQ_NODENAME: rabbit2
+     RABBITMQ_USE_LONGNAME: "true"
+     RABBITMQ_SERVER_START_ARGS: "-rabbit cluster_nodes {['rabbit1@mq1','rabbit2@mq2','rabbit3@mq3'],disc}"
+    depends_on:
+      mq1:
+          condition: service_healthy
+    links:
+     - mq1
+    volumes:
+     - /var/log
+     - /etc/rabbitmq
+     - /var/lib/rabbitmq
+    healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:25672"]
+     interval: 3s
+     timeout: 1s
+     retries: 20
+  mq3:
+    build: .
+    ports:
+     - "35672:15672"
+     - "6872:5672"
+    hostname: mq3
+    container_name: mq3
+    environment:
+     RABBITMQ_NODENAME: rabbit3
+     RABBITMQ_USE_LONGNAME: "true"
+     RABBITMQ_SERVER_START_ARGS: "-rabbit cluster_nodes {['rabbit1@mq1','rabbit2@mq2','rabbit3@mq3'],disc}"
+    networks:
+     - mq_net
+    depends_on:
+      mq1:
+          condition: service_healthy
+    links:
+     - mq1
+     - mq2
+    volumes:
+     - /var/log
+     - /etc/rabbitmq
+     - /var/lib/rabbitmq
+    healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:35672"]
+     interval: 3s
+     timeout: 1s
+     retries: 20
+networks: 
+  mq_net:
+    driver: bridge
